@@ -4,25 +4,28 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strconv"
+    "sync"
+    "runtime"
+    "strconv"
 )
 
-func walk(cur string, sync chan int) {
+// sync attempt with waitgroups
+var wg sync.WaitGroup
+
+func walk(cur string) {
 	var i int = 0
-	sync_ch:=make(chan int)
 	//fmt.Println("In ", cur)
+    defer wg.Done()
+
 	file,err:=os.Open(cur)
 	if err!=nil {
 		fmt.Println("ERROR: ", err)
-		sync<-1
 		return
 		//panic(err)
 	}
 	filesall,err:=file.Readdir(-1)
 	if err!=nil {
 		fmt.Println("ERROR: ", err)
-		sync<-1
 		return
 		//panic(err)
 	}
@@ -32,31 +35,21 @@ func walk(cur string, sync chan int) {
 			//fmt.Println("ENTERing ", filepath.Join(cur, v.Name()))
 			i++
 			//go walk(filepath.Join(cur, v.Name()), sync_ch)
-			go walk(cur+"/"+v.Name(), sync_ch)
+            wg.Add(1)
+			go walk(filepath.Join(cur, v.Name()))
 		}
 	}
-	//fmt.Println(cur, " SPAWNED ", i)
-	if i==0 {
-		//fmt.Println(cur, " DONE")
-		sync<-1
-		return
-	} else {
-		for i>0 {
-			//fmt.Println(cur, " WAITING: ", i)
-			//fmt.Println(cur, "GOT: ", <-sync_ch)
-			<-sync_ch
-			i--
-		}
-	}
-	sync<-1
 }
 
 
 func main() {
+    // this is sent through ENV{'GOMAXPROCS'}
 	procs,_:=strconv.Atoi(os.Args[1])
 	runtime.GOMAXPROCS(procs)
 	//fmt.Println("GOMAXPROCS=",runtime.GOMAXPROCS(procs))
-	sync:=make(chan int)
-	go walk(os.Args[2], sync)
-	<-sync
+
+    wg.Add(1)
+    go walk(os.Args[2])
+    wg.Wait()
+
 }
