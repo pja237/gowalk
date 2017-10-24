@@ -55,6 +55,7 @@ func walk(cur string, sync chan int) {
 func main() {
 	procs,_:=strconv.Atoi(os.Args[1])
 	runtime.GOMAXPROCS(procs)
+	//fmt.Println("GOMAXPROCS=",runtime.GOMAXPROCS(procs))
 	sync:=make(chan int)
 	go walk(os.Args[2], sync)
 	<-sync
