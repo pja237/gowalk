@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strconv"
 )
 
 func walk(cur string, sync chan int) {
@@ -13,11 +15,15 @@ func walk(cur string, sync chan int) {
 	file,err:=os.Open(cur)
 	if err!=nil {
 		fmt.Println("ERROR: ", err)
+		sync<-1
+		return
 		//panic(err)
 	}
 	filesall,err:=file.Readdir(-1)
 	if err!=nil {
 		fmt.Println("ERROR: ", err)
+		sync<-1
+		return
 		//panic(err)
 	}
 	for _,v:=range filesall {
@@ -47,7 +53,9 @@ func walk(cur string, sync chan int) {
 
 
 func main() {
+	procs,_:=strconv.Atoi(os.Args[1])
+	runtime.GOMAXPROCS(procs)
 	sync:=make(chan int)
-	go walk(os.Args[1], sync)
+	go walk(os.Args[2], sync)
 	<-sync
 }
